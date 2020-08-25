@@ -35,7 +35,7 @@ var (
 			Enabled:  true,
 			Adapter:  "memory",
 			Interval: 60,
-			TTL:      16 * time.Hour,
+			TTL:      72 * time.Hour,
 		},
 		LastCommit: struct {
 			Enabled      bool
