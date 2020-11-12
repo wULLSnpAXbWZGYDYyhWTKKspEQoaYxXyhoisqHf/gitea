@@ -3,14 +3,13 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-// +build !nogogit
+// +build nogogit
 
 package git
 
 import (
 	"bytes"
 	"container/list"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -20,11 +19,6 @@ import (
 	"strings"
 	"time"
 
-	gitealog "code.gitea.io/gitea/modules/log"
-	"github.com/go-git/go-billy/v5/osfs"
-	gogit "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing/cache"
-	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/unknwon/com"
 )
 
@@ -34,9 +28,7 @@ type Repository struct {
 
 	tagCache *ObjectCache
 
-	gogitRepo    *gogit.Repository
-	gogitStorage *filesystem.Storage
-	gpgSettings  *GPGSettings
+	gpgSettings *GPGSettings
 }
 
 // GPGSettings represents the default GPG settings for this repository
@@ -103,42 +95,14 @@ func OpenRepository(repoPath string) (*Repository, error) {
 	} else if !isDir(repoPath) {
 		return nil, errors.New("no such file or directory")
 	}
-
-	fs := osfs.New(repoPath)
-	_, err = fs.Stat(".git")
-	if err == nil {
-		fs, err = fs.Chroot(".git")
-		if err != nil {
-			return nil, err
-		}
-	}
-	storage := filesystem.NewStorageWithOptions(fs, cache.NewObjectLRUDefault(), filesystem.Options{KeepDescriptors: true})
-	gogitRepo, err := gogit.Open(storage, fs)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Repository{
-		Path:         repoPath,
-		gogitRepo:    gogitRepo,
-		gogitStorage: storage,
-		tagCache:     newObjectCache(),
+		Path:     repoPath,
+		tagCache: newObjectCache(),
 	}, nil
 }
 
 // Close this repository, in particular close the underlying gogitStorage if this is not nil
 func (repo *Repository) Close() {
-	if repo == nil || repo.gogitStorage == nil {
-		return
-	}
-	if err := repo.gogitStorage.Close(); err != nil {
-		gitealog.Error("Error closing storage: %v", err)
-	}
-}
-
-// GoGitRepo gets the go-git repo representation
-func (repo *Repository) GoGitRepo() *gogit.Repository {
-	return repo.gogitRepo
 }
 
 // IsEmpty Check if repository is empty.
@@ -169,24 +133,19 @@ type CloneRepoOptions struct {
 
 // Clone clones original repository to target path.
 func Clone(from, to string, opts CloneRepoOptions) (err error) {
-	return CloneWithContext(DefaultContext, from, to, opts)
-}
-
-// CloneWithContext clones original repository to target path.
-func CloneWithContext(ctx context.Context, from, to string, opts CloneRepoOptions) (err error) {
 	cargs := make([]string, len(GlobalCommandArgs))
 	copy(cargs, GlobalCommandArgs)
-	return CloneWithArgs(ctx, from, to, cargs, opts)
+	return CloneWithArgs(from, to, cargs, opts)
 }
 
 // CloneWithArgs original repository to target path.
-func CloneWithArgs(ctx context.Context, from, to string, args []string, opts CloneRepoOptions) (err error) {
+func CloneWithArgs(from, to string, args []string, opts CloneRepoOptions) (err error) {
 	toDir := path.Dir(to)
 	if err = os.MkdirAll(toDir, os.ModePerm); err != nil {
 		return err
 	}
 
-	cmd := NewCommandContextNoGlobals(ctx, args...).AddArguments("clone")
+	cmd := NewCommandNoGlobals(args...).AddArguments("clone")
 	if opts.Mirror {
 		cmd.AddArguments("--mirror")
 	}
