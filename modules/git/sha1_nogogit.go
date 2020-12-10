@@ -34,6 +34,7 @@ func (s SHA1) String() string {
 	return hex.EncodeToString(s[:])
 }
 
+// IsZero returns whether this SHA1 is all zeroes
 func (s SHA1) IsZero() bool {
 	var empty SHA1
 	return s == empty
@@ -82,7 +83,7 @@ func ComputeBlobHash(content []byte) SHA1 {
 // ComputeHash compute the hash for a given ObjectType and content
 func ComputeHash(t ObjectType, content []byte) SHA1 {
 	h := NewHasher(t, int64(len(content)))
-	h.Write(content)
+	_, _ = h.Write(content)
 	return h.Sum()
 }
 
@@ -94,10 +95,10 @@ type Hasher struct {
 // NewHasher takes an object type and size and creates a hasher to generate a SHA
 func NewHasher(t ObjectType, size int64) Hasher {
 	h := Hasher{sha1.New()}
-	h.Write(t.Bytes())
-	h.Write([]byte(" "))
-	h.Write([]byte(strconv.FormatInt(size, 10)))
-	h.Write([]byte{0})
+	_, _ = h.Write(t.Bytes())
+	_, _ = h.Write([]byte(" "))
+	_, _ = h.Write([]byte(strconv.FormatInt(size, 10)))
+	_, _ = h.Write([]byte{0})
 	return h
 }
 
